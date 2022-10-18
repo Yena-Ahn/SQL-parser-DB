@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "*.rmd": "markdown",
+        "*.ttml": "xml",
+        "*.ttss": "css"
+    }
+}

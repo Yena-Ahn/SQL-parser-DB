@@ -1,0 +1,132 @@
+%import common._STRING_ESC_INNER
+%import common.SIGNED_INT       -> INT
+%import common.LETTER           -> C
+%import common.DIGIT            -> N
+%import common.WS
+%ignore WS
+
+// Parenthesis
+LP : "("
+RP : ")"
+DQ : "\""
+SQ : "'"
+
+// Tokens
+STR : DQ _STRING_ESC_INNER DQ | SQ _STRING_ESC_INNER SQ
+DATE.9 : N N N N "-" N N "-" N N
+IDENTIFIER : C (C | "_")*
+
+// Keywords
+TYPE_INT : "int"i
+TYPE_CHAR : "char"i
+TYPE_DATE : "date"i
+EXIT : "exit"i
+CREATE : "create"i
+DROP : "drop"i
+DESC : "desc"i
+SHOW : "show"i
+TABLE : "table"i
+TABLES : "tables"i
+NOT : "not"i
+NULL : "null"i
+PRIMARY : "primary"i
+FOREIGN : "foreign"i
+KEY : "key"i
+REFERENCES : "references"i
+SELECT : "select"i
+FROM : "from"i
+WHERE : "where"i
+AS : "as"i
+IS : "is"i
+OR : "or"i
+AND : "and"i
+EQUAL : "="i
+SMALLER : "<"i
+BIGGER : ">"i
+BIGGER_OR_EQUAL : ">="i
+SMALLER_OR_EQUAL : "<="i
+NOT_EQUAL : "!="i
+
+// COMP_OP : "<" | ">" | "=" | ">=" | "<=" | "!="
+INSERT : "insert"i
+INTO : "into"i
+VALUES : "values"i
+DELETE : "delete"i
+SET : "set"i
+UPDATE : "update"i
+
+
+// QUERY
+command : query_list | EXIT ";"
+query_list : (query ";")+
+query : create_table_query
+      | select_query
+      | insert_query
+      | drop_table_query
+      | desc_table_query
+      | show_table_query
+      | delete_query
+      | update_tables_query
+comp_op : SMALLER | BIGGER | EQUAL | SMALLER_OR_EQUAL | BIGGER_OR_EQUAL | NOT_EQUAL
+
+// CREATE TABLE
+create_table_query : CREATE TABLE table_name table_element_list
+table_element_list : LP table_element ("," table_element)* RP
+table_element : column_definition
+            | table_constraint_definition
+column_definition : column_name data_type [NOT NULL]
+table_constraint_definition : primary_key_constraint
+                              | referential_constraint
+primary_key_constraint : PRIMARY KEY column_name_list
+referential_constraint : FOREIGN KEY column_name_list REFERENCES table_name column_name_list
+
+column_name_list : LP column_name ("," column_name)* RP
+data_type : TYPE_INT
+            | TYPE_CHAR LP INT RP
+            | TYPE_DATE
+table_name : IDENTIFIER
+column_name : IDENTIFIER
+
+
+// DROP TABLE, DESC, SHOW TABLES
+drop_table_query : DROP TABLE table_name
+desc_table_query : DESC table_name
+show_table_query : SHOW TABLES
+
+
+// SELECT
+select_query : SELECT select_list table_expression
+select_list : "*"
+            | selected_column ("," selected_column)*
+selected_column : [table_name "."] column_name [AS column_name]
+table_expression : from_clause [where_clause]
+from_clause : FROM table_reference_list
+table_reference_list : referred_table ("," referred_table)*
+referred_table : table_name [AS table_name]
+where_clause : WHERE boolean_expr
+boolean_expr : boolean_term (OR boolean_term)*
+boolean_term : boolean_factor (AND boolean_factor)*
+boolean_factor : [NOT] boolean_test
+boolean_test : predicate
+            | parenthesized_boolean_expr
+parenthesized_boolean_expr : LP boolean_expr RP
+predicate : comparison_predicate
+            | null_predicate
+comparison_predicate : comp_operand comp_op comp_operand
+comp_operand : comparable_value
+            | [table_name "."] column_name
+comparable_value : INT | STR | DATE
+null_predicate : [table_name "."] column_name null_operation
+null_operation : IS [NOT] NULL
+
+
+// INSERT
+insert_query : INSERT INTO table_name [column_name_list] VALUES value_name_list
+value_name_list : LP value_name ("," value_name)* RP
+value_name : STR | INT
+
+// DELETE
+delete_query : DELETE from_clause where_clause
+
+// UPDATE TABLES
+update_tables_query : UPDATE table_name SET column_name EQUAL comparable_value where_clause
