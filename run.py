@@ -1,6 +1,5 @@
 # from bsddb3 import db
-#from berkeleydb import db
-from pkgutil import iter_modules
+from berkeleydb import db
 from lark import Lark, Transformer
 
 
@@ -65,10 +64,12 @@ class MyTransformer(Transformer):
         return items[0]
         
     def column_definition(self, column_definition):
+        if "column_name" not in self.table_dict.keys():
+            self.table_dict["column_name"] = []
         if column_definition[-2:] != ['not', 'null']:
-            self.table_dict["column_name"] = column_definition[:2]
+            self.table_dict["column_name"] += [column_definition[:2]]
             return column_definition[:2]
-        self.table_dict["column_name"] = column_definition
+        self.table_dict["column_name"] += [column_definition]
         return column_definition
     
     def column_name(self, column_name):
@@ -80,12 +81,16 @@ class MyTransformer(Transformer):
     
     def primary_key_constraint(self, primary_key_constraint):
         primary_key_constraint[0] = primary_key_constraint[0] +  primary_key_constraint[1]
-        self.table_dict["primary_key"] = primary_key_constraint[2:]
+        if "primary_key" not in self.table_dict.keys():
+            self.table_dict["primary_key"] = []
+        self.table_dict["primary_key"] += primary_key_constraint[2:]
         return [primary_key_constraint[0]] + primary_key_constraint[2:]
     
     def referential_constraint(self, items):
         items[0] = items[0] + items[1]
-        self.table_dict["foreign_key"] = items[2:]
+        if "foreign_key" not in self.table_dict.keys():
+            self.table_dict["foreign_key"] = []
+        self.table_dict["foreign_key"] += items[2:]
         return [items[0]] + items[2:]
     
     ###########################################
