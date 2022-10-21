@@ -1,5 +1,6 @@
-from bsddb3 import db
+# from bsddb3 import db
 #from berkeleydb import db
+from pkgutil import iter_modules
 from lark import Lark, Transformer
 
 
@@ -24,12 +25,16 @@ class MyTransformer(Transformer):
     TYPE_INT = str
     TYPE_CHAR = str
     INT = int
+    
+    def __init__(self):
+        self.table_dict = {}
     #parent nodes of queries
     # command = lambda self, items: "".join(map(str,items))
     # query_list = lambda self, items: "".join(map(str,items))
     #query = lambda self, items: "".join(map(str, items))
     def command(self, items):
-        return items
+        return self.table_dict
+    
     def query_list(self, items):
         return items
     
@@ -37,9 +42,12 @@ class MyTransformer(Transformer):
         return items
     
     def create_table_query(self, items):
+        self.table_dict["table_name"] = items[2]
         return items
     
     def data_type(self, items):
+        if items[0] == 'char':
+            return [items[0], items[2]]
         return items
     
     def table_name(self, table_name):
@@ -47,6 +55,7 @@ class MyTransformer(Transformer):
     
     def table_element_list(self, table_element):
         result = [i for i in table_element if i != '(' and i != ')']
+        self.table_dict["table_element"] = result
         return result
     
     def table_element(self, items):
@@ -57,7 +66,9 @@ class MyTransformer(Transformer):
         
     def column_definition(self, column_definition):
         if column_definition[-2:] != ['not', 'null']:
+            self.table_dict["column_name"] = column_definition[:2]
             return column_definition[:2]
+        self.table_dict["column_name"] = column_definition
         return column_definition
     
     def column_name(self, column_name):
@@ -68,10 +79,14 @@ class MyTransformer(Transformer):
         return result
     
     def primary_key_constraint(self, primary_key_constraint):
-        return primary_key_constraint
+        primary_key_constraint[0] = primary_key_constraint[0] +  primary_key_constraint[1]
+        self.table_dict["primary_key"] = primary_key_constraint[2:]
+        return [primary_key_constraint[0]] + primary_key_constraint[2:]
     
     def referential_constraint(self, items):
-        return items
+        items[0] = items[0] + items[1]
+        self.table_dict["foreign_key"] = items[2:]
+        return [items[0]] + items[2:]
     
     ###########################################
     
@@ -81,6 +96,10 @@ class MyTransformer(Transformer):
     def desc_table_query(self, items):
         return items
     
+    def show_table_query(self, items):
+        return " ".join(map(str, items))
+    
+    ##########################################
     def insert_query(self, items):
         return f"'{items[0].upper()}' requested"
     
@@ -90,8 +109,7 @@ class MyTransformer(Transformer):
     def select_query(self, items):
         return f"'{items[0].upper()}' requested"
     
-    def show_table_query(self, items):
-        return " ".join(map(str, items))
+    
     
     def update_tables_query(self, items):
         return f"'{items[0].upper()}' requested"
