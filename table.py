@@ -4,7 +4,7 @@ Store data information in table class
 
 class Table:
     def __init__(self, table_name):
-        self.__table_name = table_name
+        self.__table_name = table_name.lower()
         self.__columns = []
         self.__referencedBY = []
     def getTableName(self):
@@ -15,6 +15,12 @@ class Table:
         return self.__referencedBY
     def addCol(self, column):
         self.__columns.append(column)
+    def addColList(self, col_list):
+        self.__columns += col_list
+    def findCol(self, col):
+        for c in self.__columns:
+            if c.getColName() == col:
+                return c
     def addReferencedBy(self, table):
         self.__referencedBY.append(table)
     def isReferenced(self):
@@ -27,7 +33,7 @@ class Table:
 
 class Column:
     def __init__(self, col_name, data_type, length_limit = None, not_null=False):
-        self.__col_name = col_name
+        self.__col_name = col_name.lower()
         self.__data_type = data_type
         self.__length_limit = length_limit
         self.not_null = not_null
