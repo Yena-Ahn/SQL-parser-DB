@@ -1,6 +1,24 @@
 """
 Store data information in table class
 """
+class Record:
+    def __init__(self):
+        self.__table_list = []
+    def getTableList(self):
+        return self.__table_list
+    def addTable(self, table):
+        self.__table_list.append(table)
+    def findTable(self, table_name):
+        for t in self.__table_list:
+            if t.getTableName() == table_name:
+                return t
+        return None
+    def removeTable(self, table):
+        for i in range(len(self.__table_list)):
+            if self.__table_list[i] == table:
+                self.__table_list = self.__table_list[:i] + self.__table_list[i+1:]
+                return True
+        return False
 
 class Table:
     def __init__(self, table_name):
@@ -11,6 +29,8 @@ class Table:
         return self.__table_name
     def getColumns(self):
         return self.__columns
+    def getColNameList(self):
+        return [col.getColName() for col in self.__columns]
     def getReferencedBY(self):
         return self.__referencedBY
     def addCol(self, column):
@@ -27,12 +47,15 @@ class Table:
         if len(self.getReferencedBY) == 0:
             return False
         return True
+    def getPKname(self):
+        return [col.getColName for col in self.__columns if col.isPK()]
     def getPK(self):
-        pkList = [col for col in self.__columns if col.isPrimary()]
+        pkList = [col for col in self.__columns if col.isPK()]
         return pkList
 
+
 class Column:
-    def __init__(self, col_name, data_type, length_limit = None, not_null=False):
+    def __init__(self, col_name, data_type, length_limit, not_null):
         self.__col_name = col_name.lower()
         self.__data_type = data_type
         self.__length_limit = length_limit
@@ -55,22 +78,6 @@ class Column:
     def setFK(self):
         self.__is_fk = True
 
-
-        
-
-
-class ForeignKey:
-    def __init__(self, col_name, reference_table, reference_col):
-        self.__fk = col_name
-        self.__reference_table = reference_table
-        self.__reference_col = reference_col
-    def getFK(self):
-        return self.__fk
-    def getReferenceTable(self):
-        return self.__reference_table
-    def getRC(self):
-        return self.__reference_col
-    
 
 
 

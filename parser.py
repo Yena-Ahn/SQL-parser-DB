@@ -82,11 +82,11 @@ class MyTransformer(Transformer):
         return items[0]
         
     def column_definition(self, column_definition):
-        not_null = False
+        not_null = True
         if "column_list" not in self.table_dict.keys():
             self.table_dict["column_list"] = []
         if column_definition[-2:] != ['not', 'null']:
-            not_null = True
+            not_null = False
         if column_definition[1][0] == "char":
             col = Column(column_definition[0], column_definition[1][0], column_definition[1][1], not_null)
         if column_definition[1][0] == "int":
@@ -110,27 +110,12 @@ class MyTransformer(Transformer):
         if "primary_key" in self.table_dict.keys():
             #print("Create table has failed: primary key definition is duplicated")
             self.table_dict["error"] += ["DuplicatePrimaryKeyDefError"]
-        self.table_dict["primary_key"] = []
-        primary_key_list = sum(primary_key_constraint[2:], [])
-        exist = False
-        count = 0
-        
-        for key in primary_key_list:
-            for col in self.table_dict["column_list"]:
-                if key == col.getColName():
-                    col.setPK()
-                    self.table_dict["primary_key"].append(col)
-                    count += 1
-                    exist = True
-        if not exist or count != len(primary_key_list):
-            self.table_dict["error"].append(f"NonExistingColumnDefError({#colName})")
-            
+            return [primary_key_constraint[0]] + primary_key_constraint[2:]
+        self.table_dict["primary_key"] = sum(primary_key_constraint[2:], [])
         return [primary_key_constraint[0]] + primary_key_constraint[2:]
     
     def referential_constraint(self, items):
         items[0] = items[0] + items[1]
-        if len(items[2]) != len(items[5]):
-            self.table_dict["error"].append("ReferenceTypeError")
         if "foreign_key" not in self.table_dict.keys():
             self.table_dict["foreign_key"] = []
         self.table_dict["foreign_key"].append([items[2]] + items[4:])
