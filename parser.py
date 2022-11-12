@@ -1,4 +1,5 @@
 
+from itertools import chain
 from lark import Lark, Transformer
 from table import *
 
@@ -32,6 +33,10 @@ class MyTransformer(Transformer):
     TYPE_CHAR = str
     INT = int
     DESC = str
+    STR = str
+    INTO = str
+    INSERT = str
+    VALUES = str
     
     def __init__(self):
         self.table_dict = {}
@@ -45,6 +50,7 @@ class MyTransformer(Transformer):
     """
     
     def command(self, items):
+        return items
         if items[0] == "exit":
             return "exit"
         return self.table_dict
@@ -142,8 +148,15 @@ class MyTransformer(Transformer):
     #PRJ 1-3
     def insert_query(self, items):
         self.table_dict["query"] = "insert"
-        self.table_dict["table_name"] = 
-        return f"'{items[0].upper()}' requested"
+        #self.table_dict["table_name"] = items[]
+        return items
+    
+    def value_name(self, items):
+        return items[0]
+    
+    def value_name_list(self, items):
+        self.table_dict["value_name_list"] = [i for i in items if i != '(' and i !=')']
+        return items
     
     def delete_query(self, items):
         return f"'{items[0].upper()}' requested"

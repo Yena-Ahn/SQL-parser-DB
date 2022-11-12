@@ -301,6 +301,7 @@ while endloop:
     for i in query_list:
         try:
             transformed = parser(i)
+            print(transformed)
             if transformed == "exit":
                 endloop = False
                 break
