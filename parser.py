@@ -139,8 +139,10 @@ class MyTransformer(Transformer):
     
     ##########################################
     
-    #No need for PRJ 1-2
+    #PRJ 1-3
     def insert_query(self, items):
+        self.table_dict["query"] = "insert"
+        self.table_dict["table_name"] = 
         return f"'{items[0].upper()}' requested"
     
     def delete_query(self, items):

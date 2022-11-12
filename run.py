@@ -1,10 +1,10 @@
 
-from re import L
 from berkeleydb import db
 from lark import Lark
 from table import *
 from parser import MyTransformer
 import os
+import pickle
 
 """
 Project 1-1 UPDATE
@@ -32,6 +32,7 @@ def parser(query):
         if transformed == 'exit':
             global endloop
             endloop = False
+            return "exit"
         else:
             return transformed
             #print("DB_2022-81863>",transformed)
@@ -242,7 +243,7 @@ def error(error_type):
         print("DB_2022-81863>", "Char length should be over 0")        
 
 
-def database(dict):
+def database(dict, allData):
     if dict["query"] == "create":
         table = dict["table_name"]
         table_name = table.getTableName()
@@ -259,8 +260,29 @@ def database(dict):
         if os.path.isfile(file):
             os.remove(file)
             print("DB_2022-81863>", f"'{table_name}' table is dropped")
-
+    if dict["query"] == "insert":
+        table = dict["table_name"]
+        record = load_object("record.pkl")
+        ##
         
+            
+
+def loadData(record):
+    allData = [f for f in os.listdir("db") if os.path.isfile(os.path.join("db", f))]
+    return allData
+
+def save_object(obj, filename):
+    with open(filename, 'wb') as output:
+        pickle.dump(obj, output, -1)
+
+def load_object(filename):
+    with open(filename, 'rb') as input:
+        return pickle.load(input)
+
+
+
+
+
         
         
         
@@ -273,6 +295,8 @@ endloop = True
 record = Record()
 
 while endloop:
+    allData = loadData(record)
+    print(allData)
     query_list = query_sequence()
     for i in query_list:
         try:
@@ -281,7 +305,7 @@ while endloop:
                 endloop = False
                 break
             dict = HandlingError(transformed, record)
-            
+            save_object(record, "record.pkl")
             if dict != None:
                 if len(dict["error"]) != 0:
                     error(dict["error"][0])
