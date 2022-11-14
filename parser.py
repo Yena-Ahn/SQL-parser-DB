@@ -33,7 +33,7 @@ class MyTransformer(Transformer):
     TYPE_CHAR = str
     INT = int
     DESC = str
-    STR = str
+    #STR = str
     INTO = str
     INSERT = str
     VALUES = str
@@ -50,7 +50,7 @@ class MyTransformer(Transformer):
     """
     
     def command(self, items):
-        return items
+        #return items
         if items[0] == "exit":
             return "exit"
         return self.table_dict
@@ -148,15 +148,23 @@ class MyTransformer(Transformer):
     #PRJ 1-3
     def insert_query(self, items):
         self.table_dict["query"] = "insert"
-        #self.table_dict["table_name"] = items[]
+        self.table_dict["table_name"] = items[2][0]
+        self.table_dict["column_list"] = items[3]
+        self.table_dict["value_list"] = items[5]
         return items
     
     def value_name(self, items):
         return items[0]
     
+    def STR(self, items):
+        if "'" in items:
+            items = items.replace("'", "")
+        return str(items)
+    
     def value_name_list(self, items):
-        self.table_dict["value_name_list"] = [i for i in items if i != '(' and i !=')']
-        return items
+        result = [i for i in items if i != '(' and i !=')']
+        self.table_dict["value_name_list"] = result
+        return result
     
     def delete_query(self, items):
         return f"'{items[0].upper()}' requested"

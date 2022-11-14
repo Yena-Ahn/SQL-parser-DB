@@ -5,6 +5,7 @@ from table import *
 from parser import MyTransformer
 import os
 import pickle
+import datetime
 
 """
 Project 1-1 UPDATE
@@ -56,6 +57,12 @@ def query_sequence():
     return query_list
 
 
+def validate(date_text):
+    try:
+        datetime.datetime.strptime(date_text, '%Y-%m-%d')
+    except ValueError:
+        return False
+    return True
 
 
 def HandlingError(parsed_dict, record):
@@ -198,7 +205,40 @@ def HandlingError(parsed_dict, record):
             print(item.getTableName())            
         print("----------------")
         return None
-        
+    
+    if parsed_dict["query"] == "insert":
+        if parsed_dict["table_name"] not in record.getTableList():
+            parsed_dict["error"].append("NoSuchTable")
+            return parsed_dict
+        table = record.findTable(parsed_dict["table_name"])
+        col = parsed_dict["column_list"]
+        val = parsed_dict["value_list"]
+        if col != None:
+            col_list = table.getColumns()
+            if len(col_list) != len(col):
+                parsed_dict["error"].append("InsertTypeMismathError")
+                return parsed_dict
+            for i in range(len(col_list)):
+                if col_list[i].getDataType() == "char":
+                    if isinstance(val[i], str) == False:
+                        parsed_dict["error"].append("InsertTypeMismathError")
+                        return parsed_dict
+                if col_list[i].getDataType() == "int":
+                    if isinstance(val[i], int) == False:
+                        parsed_dict["error"].append("InsertTypeMismathError")
+                        return parsed_dict
+                if col_list[i].getDataType() == "date":
+                    if validate(val[i]) == False:
+                        parsed_dict["error"].append("InsertTypeMismathError")
+                        return parsed_dict
+                    
+            
+        else:
+            col_list = table.getColumns()
+            
+            
+
+       
         
         
         
@@ -260,10 +300,7 @@ def database(dict, allData):
         if os.path.isfile(file):
             os.remove(file)
             print("DB_2022-81863>", f"'{table_name}' table is dropped")
-    if dict["query"] == "insert":
-        table = dict["table_name"]
-        record = load_object("record.pkl")
-        ##
+
         
             
 
