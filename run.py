@@ -327,10 +327,10 @@ def database(dict, record):
         dir = "db/" + table
         myDB.open(dir, dbtype=db.DB_HASH)
         value_dict = {}
-        
+        table = record.findTable(dict["table_name"])
+        column = table.getColumns()
         if dict["column_list"] != None:
-            table = record.findTable(dict["table_name"])
-            column = table.getColumns()
+            
             # put values in dict object
             for i in range(len(dict["column_list"])):
                 value_dict[dict["column_list"][i]] = dict["value_list"][i]
