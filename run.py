@@ -217,24 +217,33 @@ def HandlingError(parsed_dict, record):
             col_list = table.getColumns()
             if len(col_list) != len(col):
                 parsed_dict["error"].append("InsertTypeMismathError")
-                return parsed_dict
+                return parsed_dict    
             for i in range(len(col_list)):
-                if col_list[i].getDataType() == "char":
-                    if isinstance(val[i], str) == False:
-                        parsed_dict["error"].append("InsertTypeMismathError")
-                        return parsed_dict
-                if col_list[i].getDataType() == "int":
-                    if isinstance(val[i], int) == False:
-                        parsed_dict["error"].append("InsertTypeMismathError")
-                        return parsed_dict
-                if col_list[i].getDataType() == "date":
-                    if validate(val[i]) == False:
-                        parsed_dict["error"].append("InsertTypeMismathError")
-                        return parsed_dict
-                    
-            
-        else:
-            col_list = table.getColumns()
+                if col[i] != col_list[i].getColName():
+                    parsed_dict["error"].append(f"InsertColumnExistenceError{col[i]}")
+                    return parsed_dict
+        for i in range(len(col_list)):
+            if col_list[i].getDataType() == "char":
+                if isinstance(val[i], str) == False:
+                    parsed_dict["error"].append("InsertTypeMismathError")
+                    return parsed_dict
+                if len(val[i]) > col_list[i].getLengthLimit():
+                    val[i] = val[i][:col_list[i].getLengthLimit()]
+            if col_list[i].getDataType() == "int":
+                if isinstance(val[i], int) == False:
+                    parsed_dict["error"].append("InsertTypeMismathError")
+                    return parsed_dict
+            if col_list[i].getDataType() == "date":
+                if validate(val[i]) == False:
+                    parsed_dict["error"].append("InsertTypeMismathError")
+                    return parsed_dict
+            if val[i] == "null" and col_list[i].not_null == True:
+                parsed_dict["error"].append(f"InsertColumnNonNullableError{col_list[i].getColName()}")
+                return parsed_dict
+          
+        
+                
+        
             
             
 
@@ -280,10 +289,22 @@ def error(error_type):
     elif error_type == "NoSuchTable":
         print("DB_2022-81863>", "NoSuchTable")
     elif error_type == "CharLengthError":
-        print("DB_2022-81863>", "Char length should be over 0")        
+        print("DB_2022-81863>", "Char length should be over 0")    
+    elif error_type == "InsertDuplicatePrimaryKeyError":
+        print("DB_2022-81863>", "Insertion has failed: Primary key duplication")
+    elif error_type == "InsertReferentialIntegrityError":
+        print("DB_2022-81863>", "Insertion has failed: Referential integrity violation")
+    elif error_type == "InsertTypeMismatchError":
+        print("DB_2022-81863>", "Insertion has failed: Types are not matched")
+    elif error_type[:len("InsertColumnExistenceError")] == "InsertColumnExistenceError":
+        name = error_type[len("InsertColumnExistenceError")+1:-1]
+        print("DB_2022-81863>", f"Insertion has failed: '{name}' does not exist")
+    elif error_type[:len("InsertColumnNonNullableError")] == "InsertColumnNonNullableError":
+        name = error_type[len("InsertColumnNonNullableError")+1:-1]
+        print("DB_2022-81863>", f"Insertion has failed: '{name}' is not nullable")
 
 
-def database(dict, allData):
+def database(dict, record):
     if dict["query"] == "create":
         table = dict["table_name"]
         table_name = table.getTableName()
@@ -300,11 +321,31 @@ def database(dict, allData):
         if os.path.isfile(file):
             os.remove(file)
             print("DB_2022-81863>", f"'{table_name}' table is dropped")
+    if dict["query"] == "insert":
+        table = dict["table_name"] + ".db"
+        myDB = db.DB()
+        dir = "db/" + table
+        myDB.open(dir, dbtype=db.DB_HASH)
+        value_dict = {}
+        
+        if dict["column_list"] != None:
+            table = record.findTable(dict["table_name"])
+            column = table.getColumns()
+            # put values in dict object
+            for i in range(len(dict["column_list"])):
+                value_dict[dict["column_list"][i]] = dict["value_list"][i]
+            for col in column:
+                if col.ColgetName() not in value_dict.keys():
+                    value_dict[col.ColgetName()] = None
+        else:
+            
+            
+        
 
         
             
 
-def loadData(record):
+def loadData():
     allData = [f for f in os.listdir("db") if os.path.isfile(os.path.join("db", f))]
     return allData
 
