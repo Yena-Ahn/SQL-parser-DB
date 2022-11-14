@@ -207,14 +207,15 @@ def HandlingError(parsed_dict, record):
         return None
     
     if parsed_dict["query"] == "insert":
-        if parsed_dict["table_name"] not in record.getTableList():
+        tableNameList = [table.getTableName() for table in record.getTableList()]
+        if parsed_dict["table_name"] not in tableNameList:
             parsed_dict["error"].append("NoSuchTable")
             return parsed_dict
         table = record.findTable(parsed_dict["table_name"])
         col = parsed_dict["column_list"]
         val = parsed_dict["value_list"]
+        col_list = table.getColumns()
         if col != None:
-            col_list = table.getColumns()
             if len(col_list) != len(col):
                 parsed_dict["error"].append("InsertTypeMismathError")
                 return parsed_dict    
@@ -240,7 +241,8 @@ def HandlingError(parsed_dict, record):
             if val[i] == "null" and col_list[i].not_null == True:
                 parsed_dict["error"].append(f"InsertColumnNonNullableError{col_list[i].getColName()}")
                 return parsed_dict
-          
+        
+            
         
                 
         
@@ -336,18 +338,25 @@ def database(dict, record):
                 value_dict[dict["column_list"][i]] = dict["value_list"][i]
             for col in column:
                 if col.ColgetName() not in value_dict.keys():
-                    value_dict[col.ColgetName()] = None
+                    value_dict[col.getColName()] = None
         else:
-            
+            for i in range(len(dict["value_list"])):
+                value_dict[column[i].getColName()] = dict["value_list"][i]
+        pk = table.getPKname()
+        byteValueDict = pickle.dumps(value_dict)
+        myDB.put(bytes(pk, "utf-8"), byteValueDict)
+        myDB.close()
+        print("DB_2022-81863> The row is inserted")
+        
             
         
 
         
             
 
-def loadData():
-    allData = [f for f in os.listdir("db") if os.path.isfile(os.path.join("db", f))]
-    return allData
+# def loadData():
+#     allData = [f for f in os.listdir("db") if os.path.isfile(os.path.join("db", f))]
+#     return allData
 
 def save_object(obj, filename):
     with open(filename, 'wb') as output:
@@ -358,7 +367,9 @@ def load_object(filename):
         return pickle.load(input)
 
 
-
+def loadPkl():
+    pklData = [f for f in os.listdir(os.curdir) if os.path.isfile(f) and f.endswith(".pkl")]
+    return pklData
 
 
         
@@ -373,8 +384,8 @@ endloop = True
 record = Record()
 
 while endloop:
-    allData = loadData(record)
-    print(allData)
+    # allData = loadData(record)
+    # print(allData)
     query_list = query_sequence()
     for i in query_list:
         try:
@@ -383,14 +394,19 @@ while endloop:
             if transformed == "exit":
                 endloop = False
                 break
+            if len(loadPkl()) > 0:
+                record_obj = load_object("Record.pkl")
+                record = load_object("record.pkl")
             dict = HandlingError(transformed, record)
+            save_object(Record, "record_class.pkl")
             save_object(record, "record.pkl")
+            
             if dict != None:
                 if len(dict["error"]) != 0:
                     error(dict["error"][0])
                     break
-                if dict["query"] == "create" or dict["query"] == "drop":
-                    database(dict)
+                if dict["query"] == "create" or dict["query"] == "drop" or dict["query"] == "insert":
+                    database(dict, record)
                  
         except SyntaxError as e:
             print("DB_2022-81863>", e) #if error occurs, prints error

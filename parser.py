@@ -159,6 +159,8 @@ class MyTransformer(Transformer):
     def STR(self, items):
         if "'" in items:
             items = items.replace("'", "")
+        if '"' in items:
+            items = items.replace('"', "")
         return str(items)
     
     def value_name_list(self, items):
