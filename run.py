@@ -16,6 +16,11 @@ Project 1-2 UPDATE
 1. get parsed information with dictionary object or command query
 2. create table object to store data
 3. store in DB using berkeley db
+
+Project 1-3 UPDATE
+1. load previous object using pickle
+2. load dbs and insert, delete, select, update rows
+3. errors are handled
 """
 
 
@@ -208,22 +213,29 @@ def HandlingError(parsed_dict, record):
     
     if parsed_dict["query"] == "insert":
         tableNameList = [table.getTableName() for table in record.getTableList()]
+        
+        #NoSuchTable
         if parsed_dict["table_name"] not in tableNameList:
             parsed_dict["error"].append("NoSuchTable")
             return parsed_dict
+        
         table = record.findTable(parsed_dict["table_name"])
         col = parsed_dict["column_list"]
         val = parsed_dict["value_list"]
         col_list = table.getColumns()
         if col != None:
+            #InsertTypeMismatchError
             if len(col_list) != len(col):
                 parsed_dict["error"].append("InsertTypeMismathError")
                 return parsed_dict    
             for i in range(len(col_list)):
+                #InsertColumnExistenceError
                 if col[i] != col_list[i].getColName():
                     parsed_dict["error"].append(f"InsertColumnExistenceError{col[i]}")
                     return parsed_dict
+                
         for i in range(len(col_list)):
+            #InsertTypeMismathError
             if col_list[i].getDataType() == "char":
                 if isinstance(val[i], str) == False:
                     parsed_dict["error"].append("InsertTypeMismathError")
@@ -238,9 +250,14 @@ def HandlingError(parsed_dict, record):
                 if validate(val[i]) == False:
                     parsed_dict["error"].append("InsertTypeMismathError")
                     return parsed_dict
+                
+            #InsertColumnNonNullableError
             if val[i] == "null" and col_list[i].not_null == True:
                 parsed_dict["error"].append(f"InsertColumnNonNullableError{col_list[i].getColName()}")
                 return parsed_dict
+    
+    if parsed_dict["query"] == "delete":
+        
         
             
         
@@ -316,6 +333,7 @@ def database(dict, record):
         # myDB.put(table.getPK(), table.get)
         myDB.close()
         print("DB_2022-81863>", f"'{table_name}' table is created")
+        
     if dict["query"] == "drop":
         table = dict["table_name"]
         table_name = table.getTableName()
@@ -323,16 +341,16 @@ def database(dict, record):
         if os.path.isfile(file):
             os.remove(file)
             print("DB_2022-81863>", f"'{table_name}' table is dropped")
+            
     if dict["query"] == "insert":
         table = dict["table_name"] + ".db"
         myDB = db.DB()
         dir = "db/" + table
         myDB.open(dir, dbtype=db.DB_HASH)
-        value_dict = {}
+        value_dict = {} #stores values of a row
         table = record.findTable(dict["table_name"])
         column = table.getColumns()
         if dict["column_list"] != None:
-            
             # put values in dict object
             for i in range(len(dict["column_list"])):
                 value_dict[dict["column_list"][i]] = dict["value_list"][i]
@@ -343,8 +361,8 @@ def database(dict, record):
             for i in range(len(dict["value_list"])):
                 value_dict[column[i].getColName()] = dict["value_list"][i]
         pk = table.getPKname()
-        byteValueDict = pickle.dumps(value_dict)
-        myDB.put(bytes(pk, "utf-8"), byteValueDict)
+        byteValueDict = pickle.dumps(value_dict) #change dict object to bytes
+        myDB.put(bytes(pk, "utf-8"), byteValueDict) #put with pk as a key and dict as a value
         myDB.close()
         print("DB_2022-81863> The row is inserted")
         
@@ -394,10 +412,11 @@ while endloop:
             if transformed == "exit":
                 endloop = False
                 break
-            if len(loadPkl()) > 0:
+            if len(loadPkl()) > 0: #load objects if they exist
                 record_obj = load_object("Record.pkl")
                 record = load_object("record.pkl")
-            dict = HandlingError(transformed, record)
+            dict = HandlingError(transformed, record) #handle error first
+            #save record object so can access to information when program runs again
             save_object(Record, "record_class.pkl")
             save_object(record, "record.pkl")
             
@@ -406,7 +425,7 @@ while endloop:
                     error(dict["error"][0])
                     break
                 if dict["query"] == "create" or dict["query"] == "drop" or dict["query"] == "insert":
-                    database(dict, record)
+                    database(dict, record) 
                  
         except SyntaxError as e:
             print("DB_2022-81863>", e) #if error occurs, prints error

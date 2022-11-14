@@ -37,10 +37,24 @@ class MyTransformer(Transformer):
     INTO = str
     INSERT = str
     VALUES = str
-    
+    FROM = str
+    AS = str
+    WHERE = str
+    DELETE = str
+    OR = str
+    AND = str
+    SMALLER = str
+    BIGGER = str
+    EQUAL = str
+    SMALLER_OR_EQUAL = str
+    BIGGER_OR_EQUAL = str
+    NOT_EQUAL = str
+    IS = str
+        
     def __init__(self):
         self.table_dict = {}
         self.table_dict["error"] = []
+        self.table_dict["where_clause"] = []
         
     """
     *PRJ 1-1* parent nodes of queries 
@@ -63,7 +77,7 @@ class MyTransformer(Transformer):
     
     def create_table_query(self, items):
         self.table_dict["query"] = "create"
-        self.table_dict["table_name"] = Table(items[2][0])
+        self.table_dict["table_name"] = Table(items[2])
         self.table_dict["table_name"].addColList(self.table_dict["column_list"])
         return items
     
@@ -75,7 +89,7 @@ class MyTransformer(Transformer):
         return items
     
     def table_name(self, table_name):
-        return table_name
+        return table_name[0]
     
     def table_element_list(self, table_element):
         result = [i for i in table_element if i != '(' and i != ')']
@@ -131,12 +145,12 @@ class MyTransformer(Transformer):
     
     def drop_table_query(self, items):
         self.table_dict["query"] = "drop"
-        self.table_dict["table_name"] = items[2][0]
+        self.table_dict["table_name"] = items[2]
         return items
     
     def desc_table_query(self, items):
         self.table_dict["query"] = "desc"
-        self.table_dict["table_name"] = items[1][0]
+        self.table_dict["table_name"] = items[1]
         return items
     
     def show_table_query(self, items):
@@ -148,7 +162,7 @@ class MyTransformer(Transformer):
     #PRJ 1-3
     def insert_query(self, items):
         self.table_dict["query"] = "insert"
-        self.table_dict["table_name"] = items[2][0]
+        self.table_dict["table_name"] = items[2]
         self.table_dict["column_list"] = items[3]
         self.table_dict["value_list"] = items[5]
         return items
@@ -168,8 +182,80 @@ class MyTransformer(Transformer):
         self.table_dict["value_name_list"] = result
         return result
     
+    ##########################################
+    
     def delete_query(self, items):
-        return f"'{items[0].upper()}' requested"
+        self.table_dict["query"] = "delete"
+        return items
+    
+    def from_clause(self, items):
+        return items[1]
+        
+    def table_reference_list(self, items):
+        self.table_dict["from_clause"] = items
+        return items
+    
+    def referred_table(self, items):
+        items.remove("as")
+        return items
+    
+    def where_clause(self, items):
+        return items[1]
+    
+    def boolean_expr(self, items):
+        if "or" in items:
+            self.table_dict["where_clause"].append("or")
+        return items
+    
+    def predicate(self, items):
+        return items
+    
+    def boolean_term(self, items):
+        if "and" in items:
+            self.table_dict["where_clause"].append("and")
+        return items
+    
+    def boolean_factor(self, items):
+        if items[0] == None:
+            items = items[1:]
+        return items
+    
+    def boolean_test(self, items):
+        return items[0]
+    
+    def predicate(self, items):
+        return items[0]
+    
+    def parenthesized_boolean_expr(self, items):
+        items_list = [i for i in items if i != "(" and i != ")"]
+        return items_list
+    
+    def comparison_predicate(self, items):
+        self.table_dict["where_clause"].append(items)
+        return items
+    
+    def comparable_value(self, items):
+        return items[0]
+    
+    def comp_operand(self, items):
+        return items
+    
+    def comp_op(self, items):
+        return items[0]
+            
+        
+    def null_predicate(self, items):
+        self.table_dict["where_clause"].append(items)
+        return items
+        
+    def null_operation(self, items):
+        if items[1] == None:
+            return items[2]
+        return "not null"
+    
+    
+    
+    
     
     def select_query(self, items):
         return f"'{items[0].upper()}' requested"
