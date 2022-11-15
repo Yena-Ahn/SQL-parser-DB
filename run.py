@@ -224,29 +224,34 @@ def HandlingError(parsed_dict, record):
         if col != None:
             #InsertTypeMismatchError
             if len(col_list) != len(col):
-                parsed_dict["error"].append("InsertTypeMismathError")
+                parsed_dict["error"].append("InsertTypeMismatchError")
                 return parsed_dict    
             for i in range(len(col_list)):
                 #InsertColumnExistenceError
                 if col[i] != col_list[i].getColName():
                     parsed_dict["error"].append(f"InsertColumnExistenceError{col[i]}")
                     return parsed_dict
+        if col == None:
+            if len(val) != len(col_list):
+                parsed_dict["error"].append("InsertTypeMismatchError")
+                return parsed_dict
+            
                 
         for i in range(len(col_list)):
             #InsertTypeMismathError
             if col_list[i].getDataType() == "char":
                 if isinstance(val[i], str) == False:
-                    parsed_dict["error"].append("InsertTypeMismathError")
+                    parsed_dict["error"].append("InsertTypeMismatchError")
                     return parsed_dict
                 if len(val[i]) > col_list[i].getLengthLimit():
                     val[i] = val[i][:col_list[i].getLengthLimit()]
             if col_list[i].getDataType() == "int":
                 if isinstance(val[i], int) == False:
-                    parsed_dict["error"].append("InsertTypeMismathError")
+                    parsed_dict["error"].append("InsertTypeMismatchError")
                     return parsed_dict
             if col_list[i].getDataType() == "date":
                 if validate(val[i]) == False:
-                    parsed_dict["error"].append("InsertTypeMismathError")
+                    parsed_dict["error"].append("InsertTypeMismatchError")
                     return parsed_dict
                 
             #InsertColumnNonNullableError
@@ -265,7 +270,60 @@ def HandlingError(parsed_dict, record):
                 parsed_dict["error"].append("NoSuchTable")
                 return parsed_dict
         
-        for where in parsed_dict["where_clause"]:
+        return whereParse(parsed_dict, record)
+    
+    if parsed_dict["query"] == "select":
+        tableNameList = [table.getTableName() for table in record.getTableList()]
+        tableList = record.getTableList()
+        #SelectTableExistenceError(#tableName)
+        for tables in parsed_dict["from_clause"]:
+            if tables[0] not in tableNameList:
+                parsed_dict["error"].append(f"SelectTableExistenceError({tables})")
+                return parsed_dict
+        return whereParse(parsed_dict, record)
+    
+    if parsed_dict["query"] == "update":
+        tableNameList = [table.getTableName() for table in record.getTableList()]
+        
+        #NoSuchTable
+        if parsed_dict["table_name"] not in tableNameList:
+            parsed_dict["error"].append("NoSuchTable")
+            return parsed_dict
+        
+        table = record.findTable(parsed_dict["table_name"])
+        col = table.findCol(parsed_dict["set"][0])
+        if col == None:
+            name = parsed_dict["set"][0]
+            parsed_dict["error"].append(f"UpdateColumnExistenceError({name})")
+            return parsed_dict
+        if col.getDataType() == "char":
+            if isinstance(parsed_dict["set"][2], str) == False:
+                parsed_dict["error"].append("UpdateTypeMismatchError")
+                return parsed_dict
+        if col.getDataType() == "int":
+            if isinstance(parsed_dict["set"][2], int) == False:
+                parsed_dict["error"].append("UpdateTypeMismatchError")
+                return parsed_dict
+        if col.getDataType() == "date":
+            if validate(parsed_dict["set"][2]) == False:
+                parsed_dict["error"].append("UpdateTypeMismatchError")
+                return parsed_dict
+        if col.not_null == True and parsed_dict["set"][2] == "null":
+            parsed_dict["error"].append(f"UpdateColumnNonNullableError({col.getColName()})")
+            return parsed_dict
+        if col.isPK():
+            parsed_dict["error"].append("UpdateDuplicatePrimaryKeyError")
+            return parsed_dict
+        if col.isFK():
+            parsed_dict["error"].append("UpdateReferentialIntegrityError")
+            return parsed_dict
+        return parsed_dict
+            
+
+
+
+def whereParse(parsed_dict, record):
+    for where in parsed_dict["where_clause"]:
             table_bool = False
             
             # if columns have reference table (tablename.colname)
@@ -375,22 +433,9 @@ def HandlingError(parsed_dict, record):
                 
                 if col_boolean == False:
                     parsed_dict["error"].append("WhereColumnNotExist")
-                    return parsed_dict
-        return parsed_dict
-    
-    if parsed_dict["query"] == "select":
-        tableNameList = [table.getTableName() for table in record.getTableList()]
-        tableList = record.getTableList()
-        #SelectTableExistenceError(#tableName)
-        for tables in parsed_dict["from_clause"]:
-            if tables[0] not in tableNameList:
-                parsed_dict["error"].append(f"SelectTableExistenceError({tables})")
-        return parsed_dict
-        
-        # SelectColumnResolveError(#colName)
-
-
-        
+                    return parsed_dict 
+    return parsed_dict   
+ 
                 
 def DuplicateColumnDefError(parsed_dict):
     col_list = [col for col in parsed_dict["column_list"]]
@@ -450,7 +495,18 @@ def error(error_type):
     elif error_type[:len("SelectTableExistenceError")] == "SelectTableExistenceError":
         name = error_type[len("SelectTableExistenceError")+1:-1]
         print("DB_2022-81863>", f"Selection has failed: '{name}' does not exist")
-
+    elif error_type == "UpdateTypeMismatchError":
+        print("DB_2022-81863>", "Update has failed: Types are not matched")
+    elif error_type[:len("UpdateColumnNonNullableError")] == "UpdateColumnNonNullableError":
+        name = error_type[len("UpdateColumnNonNullableError")+1:-1]
+        print("DB_2022-81863>", f"Update has failed: '{name}' is not nullable")
+    elif error_type[:len("UpdateColumnExistenceError")] == "UpdateColumnExistenceError":
+        name = error_type[len("UpdateColumnExistenceError")+1:-1]
+        print("DB_2022-81863>", f"Update has failed: '{name}' does not exist")
+    elif error_type == "UpdateDuplicatePrimaryKeyError":
+        print("DB_2022-81863>", "Update has failed: Primary key duplication")
+    elif error_type == "UpdateReferentialIntegrityError":
+        print("DB_2022-81863>", "Update has failed: Referential integrity violation")
  
 
 
@@ -482,33 +538,67 @@ def database(dict, record):
         table = record.findTable(dict["table_name"])
         column = table.getColumns()
         if dict["column_list"] != None:
+            print("YES")
             # put values in dict object
             for i in range(len(dict["column_list"])):
                 value_dict[dict["column_list"][i]] = dict["value_list"][i]
             for col in column:
                 if col.getColName() not in value_dict.keys():
-                    value_dict[col.getColName()] = None
+                    value_dict[col.getColName()] = "null"
+            pk = table.getPKname()
+            if value_dict[pk] == None:
+                print("DB_2022-81863>", f"Insertion has failed: '{pk}' is not nullable")
+            bytePk = pickle.dumps(value_dict[pk])
+            byteValueDict = pickle.dumps(value_dict) #change dict object to bytes
+            myDB.put(bytePk, byteValueDict) #put with pk as a key and dict as a value
+            print("DB_2022-81863> The row is inserted")
         else:
             for i in range(len(dict["value_list"])):
                 value_dict[column[i].getColName()] = dict["value_list"][i]
-        print(value_dict)
-        pk = table.getPKname()
-        bytePk = pickle.dumps(value_dict[pk])
-        byteValueDict = pickle.dumps(value_dict) #change dict object to bytes
-        myDB.put(bytePk, byteValueDict) #put with pk as a key and dict as a value
-        print("DB_2022-81863> The row is inserted")
+            pk = table.getPKname()
+            bytePk = pickle.dumps(value_dict[pk])
+            byteValueDict = pickle.dumps(value_dict) #change dict object to bytes
+            myDB.put(bytePk, byteValueDict) #put with pk as a key and dict as a value
+            print("DB_2022-81863> The row is inserted")
         
         myDB.close()
     
     if dict["query"] == "delete":
-        myDB = db.DB()
+        count = 0
         for tables in dict["from_clause"]:
             table = tables[0]
+            myDB = db.DB()
             table_dir = "db/" + table + ".db"
             myDB.open(table_dir, dbtype=db.DB_HASH)
-            rows = cursor(myDB)
+            cursor = myDB.cursor()
             
-        pass
+            while x:=cursor.next():
+                row = pickle.loads(x[1])
+                for where in dict["where_clause"]:
+                    col = where[0]
+                    if where[1] == "=":
+                        if row[col] == where[2]:
+                            cursor.delete()
+                            count += 1
+                    if where[1] == "<=":
+                        if row[col] <= where[2]:
+                            cursor.delete()
+                            count += 1
+                    if where[1] == ">=":
+                        if row[col] >= where[2]:
+                            cursor.delete()
+                            count += 1
+                    if where[1] == ">":
+                        if row[col] > where[2]:
+                            cursor.delete()
+                            count += 1
+                    if where[1] == "<":
+                        if row[col] < where[2]:
+                            cursor.delete()
+                            count += 1
+            myDB.close()
+        print("DB_2022-81863>", f"{count} row(s) are deleted")
+                        
     
     if dict["query"] == "select":
         if dict["where_clause"] == []:
@@ -542,16 +632,28 @@ def database(dict, record):
                 while x:=cursor.next():
                     selectPrint(cols, pickle.loads(x[1]))
                 printFirstLast(cols)
-          
-                    
-    
+        
         else:
-            pass
-                
-            
-            
-            
-            
+            pass  
+        
+    if dict["query"] == "update":
+        table = dict["table_name"]
+        myDB = db.DB()
+        myDB.open("db/" + table + ".db", dbtype=db.DB_HASH)
+        cursor = myDB.cursor()
+        count = 0
+        while x:=cursor.next():
+            key = pickle.loads(x[0])
+            row = pickle.loads(x[1])
+            if row[dict["where_clause"][0][0]] == dict["where_clause"][0][2]:
+                row[dict["set"][0]] = dict["set"][2]
+                myDB.put(pickle.dumps(key), pickle.dumps(row))
+                count += 1
+        myDB.close()
+        print("DB_2022-81863>", f"{count} row(s) are updated")
+        
+
+           
 def printFirstLast(col_name):
     start1 = "+"
     horizontal = start1 + ""
@@ -571,9 +673,12 @@ def printCols(col_name):
     printFirstLast(col_name)
     
 def selectPrint(col_name, row_dict):
+    if isinstance(col_name, str):
+        col_name = [col_name]
+    
     for i in range(len(col_name)):  
         if col_name[i] not in row_dict.keys():
-            print(print("DB_2022-81863>", f"Selection has failed: fail to resolve '{col_name[i]}'"))
+            print("DB_2022-81863>", f"Selection has failed: fail to resolve '{col_name[i]}'")
             return "Error"
     vals = "|"
     print(vals, end="")
@@ -583,84 +688,6 @@ def selectPrint(col_name, row_dict):
         print(" " * space + str(row_dict[col_name[i]]) + " " * (total - space - len(str(row_dict[col_name[i]]))) + "|", end="")
     print()
     
-     
-    
-    
-        
-        
-                
-def cursor(db, query, tables):
-    i = 0
-    while i < len(query):
-        if query[i] == "and" or query[i] == "or":
-            query1 = query[i-2]
-            query2 = query[i-1]
-            if isinstance(query1[0], list):
-                for table in tables:
-                    if query1[0][0] in table:
-                        wanted_table = table[0]
-                        break
-                db.open("db/"+wanted_table+".db", dbtype=db.DB_HASH)
-                cursor = db.cursor()
-                query1_key_list = []
-                while x := cursor.next():
-                    if query[i] == "or":
-                        if query1[1] == "=":
-                            if x[1][query1[0][1]] == query1[2]:
-                                cursor.delete()
-                        if query1[1] == ">=":
-                            if x[1][query1[0][1]] >= query1[2]:
-                                cursor.delete()
-                        if query1[1] == "<=":
-                            if x[1][query1[0][1]] <= query1[2]:
-                                cursor.delete()
-                        if query1[1] == "<":
-                            if x[1][query1[0][1]] < query1[2]:
-                                cursor.delete()
-                        if query1[1] == ">":
-                            if x[1][query1[0][1]] > query1[2]:
-                                cursor.delete()
-                        if query1[1] != "!=":
-                            if x[1][query1[0][1]] != query1[2]:
-                                cursor.delete()
-                        if query2[1] == "=":
-                            if x[1][query2[0][1]] == query2[2]:
-                                cursor.delete()
-                        if query2[1] == ">=":
-                            if x[1][query2[0][1]] >= query2[2]:
-                                cursor.delete()
-                        if query2[1] == "<=":
-                            if x[1][query2[0][1]] <= query2[2]:
-                                cursor.delete()
-                        if query2[1] == "<":
-                            if x[1][query2[0][1]] < query2[2]:
-                                cursor.delete()
-                        if query2[1] == ">":
-                            if x[1][query2[0][1]] > query2[2]:
-                                cursor.delete()
-                        if query2[1] != "!=":
-                            if x[1][query2[0][1]] != query2[2]:
-                                cursor.delete()
-                        
-                    else:
-                        if query1[1] == "=":
-                            if x[1][query1[0][1]] == query1[2]:
-                                query1_key_list.append(x[0])
-                        if query1[1] == ">=":
-                            if x[1][query1[0][1]] >= query1[2]:
-                                query1_key_list.append(x[0])
-                        if query1[1] == "<=":
-                            if x[1][query1[0][1]] <= query1[2]:
-                                query1_key_list.append(x[0])
-                        if query1[1] == "<":
-                            if x[1][query1[0][1]] < query1[2]:
-                                query1_key_list.append(x[0])
-                        if query1[1] == ">":
-                            if x[1][query1[0][1]] > query1[2]:
-                                query1_key_list.append(x[0])
-                        if query1[1] != "!=":
-                            if x[1][query1[0][1]] != query1[2]:
-                                query1_key_list.append(x[0])
                         
 
 def save_object(obj, filename):
@@ -701,11 +728,11 @@ while endloop:
             save_object(Record, "record_class.pkl")
             save_object(record, "record.pkl")
             
-            if dict != None:
+            if dict != None:     
                 if len(dict["error"]) != 0:
                     error(dict["error"][0])
                     break
-                if dict["query"] == "create" or dict["query"] == "drop" or dict["query"] == "insert" or dict["query"] == "select":
+                if dict["query"] == "create" or dict["query"] == "drop" or dict["query"] == "insert" or dict["query"] == "select" or dict["query"] == "delete" or dict["query"] == "update":
                     database(dict, record) 
                  
         except SyntaxError as e:

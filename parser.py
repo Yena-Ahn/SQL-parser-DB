@@ -52,6 +52,9 @@ class MyTransformer(Transformer):
     IS = str
     SELECT = str
     STAR = str
+    UPDATE = str
+    SET = str
+    
         
     def __init__(self):
         self.table_dict = {}
@@ -281,4 +284,9 @@ class MyTransformer(Transformer):
     #########################################
     
     def update_tables_query(self, items):
-        return f"'{items[0].upper()}' requested"
+        self.table_dict["query"] = "update"
+        self.table_dict["table_name"] = items[1]
+        self.table_dict["set"] = [items[3], items[4], items[5]]
+        return items
+
+    
