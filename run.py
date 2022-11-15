@@ -133,7 +133,7 @@ def HandlingError(parsed_dict, record):
                     col = table.findCol(item)
                     col.setFK()
 
-         # NonExistingColumnDefError(#colName)   
+        # NonExistingColumnDefError(#colName)   
         for key in parsed_dict["primary_key"]:
             if key not in table.getColNameList():
                 parsed_dict["error"].append(f"NonExistingColumnDefError({key})")
@@ -506,7 +506,7 @@ def error(error_type):
         print("DB_2022-81863>", "Update has failed: Primary key duplication")
     elif error_type == "UpdateReferentialIntegrityError":
         print("DB_2022-81863>", "Update has failed: Referential integrity violation")
- 
+
 
 
 def database(dict, record):
