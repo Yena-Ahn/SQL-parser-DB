@@ -159,10 +159,10 @@ def HandlingError(parsed_dict, record):
         
         #DropReferencedTableError(#tableName)
         if len(table.getReferencedBY()) > 0:
-             parsed_dict["error"].append(f"DropReferencedTableError({table.getTableName()})")
-             return parsed_dict
-         
-         #remove from record if no error
+            parsed_dict["error"].append(f"DropReferencedTableError({table.getTableName()})")
+            return parsed_dict
+
+        #remove from record if no error
         record.removeTable(table)
         return None
 
@@ -401,7 +401,6 @@ def whereParse(parsed_dict, record):
                 if table_bool == False:
                     parsed_dict["error"].append("WhereTableNotSpecified") 
                     return parsed_dict
-                 
             # columns that have no reference table (just columns)               
             elif where != "and" and where != "or" and isinstance(where[0], list) == False:
                 wanted_col = where[0]
@@ -435,7 +434,7 @@ def whereParse(parsed_dict, record):
                     parsed_dict["error"].append("WhereColumnNotExist")
                     return parsed_dict 
     return parsed_dict   
- 
+
                 
 def DuplicateColumnDefError(parsed_dict):
     col_list = [col for col in parsed_dict["column_list"]]
@@ -734,7 +733,7 @@ while endloop:
                     break
                 if dict["query"] == "create" or dict["query"] == "drop" or dict["query"] == "insert" or dict["query"] == "select" or dict["query"] == "delete" or dict["query"] == "update":
                     database(dict, record) 
-                 
+
         except SyntaxError as e:
             print("DB_2022-81863>", e) #if error occurs, prints error
             break
