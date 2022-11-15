@@ -526,9 +526,27 @@ def database(dict, record):
                     selectPrint(cols, pickle.loads(x[1]))
                 printFirstLast(cols)
             
+            #select few columns
             else:
                 table = dict["from_clause"][0][0]
-                
+                cols = []
+                for col_list in dict["column_list"]:
+                    cols.append(col_list[1])
+                myDB = db.DB()
+                myDB.open("db/" + table + ".db", dbtype=db.DB_HASH)
+                cursor = myDB.cursor()
+                while x:=cursor.next():
+                    if selectPrint(cols, pickle.loads(x[1])) == "Error":
+                        return
+                printCols(cols)
+                while x:=cursor.next():
+                    selectPrint(cols, pickle.loads(x[1]))
+                printFirstLast(cols)
+          
+                    
+    
+        else:
+            pass
                 
             
             
@@ -553,13 +571,18 @@ def printCols(col_name):
     printFirstLast(col_name)
     
 def selectPrint(col_name, row_dict):
+    for i in range(len(col_name)):  
+        if col_name[i] not in row_dict.keys():
+            print(print("DB_2022-81863>", f"Selection has failed: fail to resolve '{col_name[i]}'"))
+            return "Error"
     vals = "|"
     print(vals, end="")
-    for i in range(len(col_name)):  
+    for i in range(len(col_name)):
         total = len(col_name[i]) + 8
         space = (total - len(str(row_dict[col_name[i]]))) // 2    
         print(" " * space + str(row_dict[col_name[i]]) + " " * (total - space - len(str(row_dict[col_name[i]]))) + "|", end="")
     print()
+    
      
     
     
