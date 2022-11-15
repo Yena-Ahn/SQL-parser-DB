@@ -385,6 +385,7 @@ def HandlingError(parsed_dict, record):
         for tables in parsed_dict["from_clause"]:
             if tables[0] not in tableNameList:
                 parsed_dict["error"].append(f"SelectTableExistenceError({tables})")
+        return parsed_dict
         
         # SelectColumnResolveError(#colName)
 
@@ -510,20 +511,55 @@ def database(dict, record):
         pass
     
     if dict["query"] == "select":
-        if dict["column_list"][0] == "*":
-            rows = []
-            for tables in dict["from_clause"]:
-                table = tables[0]
-                table_dir = "db/" + table + ".db"
-                myDB.open(table_dir, dbtype=db.DB_HASH)
+        if dict["where_clause"] == []:
+            
+            if dict["column_list"][0] == "*":
+                table = dict["from_clause"][0][0]
+                table_obj = record.findTable(table)
+                cols = table_obj.getColNameList()
+                printCols(cols)
+                myDB = db.DB()
+                myDB.open("db/" + table + ".db", dbtype=db.DB_HASH)
                 cursor = myDB.cursor()
                 while x:=cursor.next():
-                    rows.append(tuple(pickle.loads(x[0]), pickle.load(x[1])))
-                sorted_list = sorted(rows, key=lambda tup: tup[0])
-            for ele in sorted_list:
-                for keys in ele[1].keys():
-                    print(ele[1][keys])
+                    selectPrint(cols, pickle.loads(x[1]))
+                printFirstLast(cols)
                 
+            
+            
+            
+            
+def printFirstLast(col_name):
+    start1 = "+"
+    horizontal = start1 + ""
+    length_list = [0 for col in col_name]
+    for i in range(len(col_name)):
+        length_list[i] = len(col_name[i])
+        horizontal += "-" * (length_list[i] + 8) + start1
+    print(horizontal)    
+        
+def printCols(col_name):
+    start2 = "|"
+    vals = start2 + ""
+    printFirstLast(col_name)
+    for i in range(len(col_name)):
+        vals += " " * 4 + col_name[i].upper() + " " * 4 + "|"
+    print(vals)
+    printFirstLast(col_name)
+    
+def selectPrint(col_name, row_dict):
+    vals = "|"
+    print(vals, end="")
+    for i in range(len(col_name)):  
+        total = len(col_name[i]) + 8
+        space = (total - len(str(row_dict[col_name[i]]))) // 2    
+        print(" " * space + str(row_dict[col_name[i]]) + " " * (total - space - len(str(row_dict[col_name[i]]))) + "|", end="")
+    print()
+     
+    
+    
+        
+        
                 
 def cursor(db, query, tables):
     i = 0
