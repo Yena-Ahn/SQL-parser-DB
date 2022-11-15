@@ -153,7 +153,7 @@ def HandlingError(parsed_dict, record):
         table = record.findTable(parsed_dict["table_name"])
         
         #NoSuchTable
-        if table not in record.getTableList():
+        if table == None:
             parsed_dict["error"].append("NoSuchTable")
             return parsed_dict
         
@@ -164,7 +164,7 @@ def HandlingError(parsed_dict, record):
 
         #remove from record if no error
         record.removeTable(table)
-        return None
+        return parsed_dict
 
     if parsed_dict["query"] == "desc":
         table = record.findTable(parsed_dict["table_name"])
@@ -468,7 +468,7 @@ def error(error_type):
         name = error_type[len("DropReferencedTableError")+1:-1]
         print("DB_2022-81863>", f"Drop table has failed: '{name}' is referenced by other table")
     elif error_type == "NoSuchTable":
-        print("DB_2022-81863>", "NoSuchTable")
+        print("DB_2022-81863>", "No such table")
     elif error_type == "CharLengthError":
         print("DB_2022-81863>", "Char length should be over 0")    
     elif error_type == "InsertDuplicatePrimaryKeyError":
@@ -522,11 +522,12 @@ def database(dict, record):
         
     if dict["query"] == "drop":
         table = dict["table_name"]
-        table_name = table.getTableName()
-        file = f"db/{table_name}.db"
+        file = f"db/{table}.db"
+        # myDB = db.DB()
+        # myDB.remove(file)
         if os.path.isfile(file):
             os.remove(file)
-            print("DB_2022-81863>", f"'{table_name}' table is dropped")
+        print("DB_2022-81863>", f"'{table}' table is dropped")
             
     if dict["query"] == "insert":
         table = dict["table_name"] + ".db"
@@ -715,12 +716,12 @@ while endloop:
     for i in query_list:
         try:
             transformed = parser(i)
-            print(transformed)
+            #print(transformed)
             if transformed == "exit":
                 endloop = False
                 break
             if len(loadPkl()) > 0: #load objects if they exist
-                record_obj = load_object("Record.pkl")
+                record_obj = load_object("record_class.pkl")
                 record = load_object("record.pkl")
             dict = HandlingError(transformed, record) #handle error first
             #save record object so can access to information when program runs again
