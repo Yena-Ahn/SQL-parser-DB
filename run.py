@@ -513,6 +513,7 @@ def database(dict, record):
     if dict["query"] == "select":
         if dict["where_clause"] == []:
             
+            #select *
             if dict["column_list"][0] == "*":
                 table = dict["from_clause"][0][0]
                 table_obj = record.findTable(table)
@@ -524,6 +525,10 @@ def database(dict, record):
                 while x:=cursor.next():
                     selectPrint(cols, pickle.loads(x[1]))
                 printFirstLast(cols)
+            
+            else:
+                table = dict["from_clause"][0][0]
+                
                 
             
             
