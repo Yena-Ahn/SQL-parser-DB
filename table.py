@@ -48,10 +48,11 @@ class Table:
             return False
         return True
     def getPKname(self):
-        return [col.getColName for col in self.__columns if col.isPK()]
+        name = [col.getColName() for col in self.__columns if col.isPK()]
+        return name[0]
     def getPK(self):
         pkList = [col for col in self.__columns if col.isPK()]
-        return pkList
+        return pkList[0]
 
 
 class Column:

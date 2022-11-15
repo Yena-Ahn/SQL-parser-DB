@@ -54,6 +54,7 @@ VALUES : "values"i
 DELETE : "delete"i
 SET : "set"i
 UPDATE : "update"i
+STAR: "*"
 
 
 // QUERY
@@ -96,7 +97,7 @@ show_table_query : SHOW TABLES
 
 // SELECT
 select_query : SELECT select_list table_expression
-select_list : "*"
+select_list : STAR
             | selected_column ("," selected_column)*
 selected_column : [table_name "."] column_name [AS column_name]
 table_expression : from_clause [where_clause]

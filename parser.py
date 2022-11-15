@@ -50,6 +50,8 @@ class MyTransformer(Transformer):
     BIGGER_OR_EQUAL = str
     NOT_EQUAL = str
     IS = str
+    SELECT = str
+    STAR = str
         
     def __init__(self):
         self.table_dict = {}
@@ -258,13 +260,25 @@ class MyTransformer(Transformer):
             return items[2]
         return "not null"
     
-    
+    #########################################
     
     
     
     def select_query(self, items):
-        return f"'{items[0].upper()}' requested"
+        self.table_dict["query"] = "select"
+        return items
     
+    def select_list(self, items):
+        self.table_dict["column_list"] = items
+        return items
+    
+    def selected_column(self, items):
+        return items
+    
+    def table_expression(self, items):
+        return items
+    
+    #########################################
     
     def update_tables_query(self, items):
         return f"'{items[0].upper()}' requested"

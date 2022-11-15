@@ -132,9 +132,7 @@ def HandlingError(parsed_dict, record):
                 for item in group[0]:
                     col = table.findCol(item)
                     col.setFK()
-                    
-                
-        
+
          # NonExistingColumnDefError(#colName)   
         for key in parsed_dict["primary_key"]:
             if key not in table.getColNameList():
@@ -255,28 +253,38 @@ def HandlingError(parsed_dict, record):
             if val[i] == "null" and col_list[i].not_null == True:
                 parsed_dict["error"].append(f"InsertColumnNonNullableError{col_list[i].getColName()}")
                 return parsed_dict
+        return parsed_dict
     
     if parsed_dict["query"] == "delete":
         tableNameList = [table.getTableName() for table in record.getTableList()]
         
-        
-        
         for tables in parsed_dict["from_clause"]:
+            
             #NoSuchTable
             if tables[0] not in tableNameList:
                 parsed_dict["error"].append("NoSuchTable")
                 return parsed_dict
         
         for where in parsed_dict["where_clause"]:
+            table_bool = False
+            
+            # if columns have reference table (tablename.colname)
             if isinstance(where[0], list):
                 for table in parsed_dict["from_clause"]:
+                    
+                    #if table has been renamed (as)
                     if len(table) > 1:
                         if table[0] == where[0][0] or table[1] == where[0][0]:
+                            table_bool = True
                             table_object = record.findTable(table[0])
                             col = table_object.findCol(where[0][1])
+
+                            #WhereColumnNotExist
                             if col == None:
                                 parsed_dict["error"].append("WhereColumnNotExist")
                                 return parsed_dict
+                            
+                            #WhereIncomparableError
                             if col.getDataType() == "char":
                                 if isinstance(where[2], str) == False:
                                     parsed_dict["error"].append("WhereIncomparableError")
@@ -289,12 +297,67 @@ def HandlingError(parsed_dict, record):
                                 if validate(where[2]) == False:
                                     parsed_dict["error"].append("WhereIncomparableError")
                                     return parsed_dict
+                    
+                    # not renamed
                     else:
-                        if table[0] == where[0][0]:
-                            table_object = record.findTable(table[0])
-                            col = table_object.findCol(where[0][1])
-                            if col == None:
-                                parsed_dict["error"].append("WhereColumnNotExist")
+                        table_object = record.findTable(table[0])
+                        if table_object != None:
+                            if table[0] == where[0][0]:
+                                table_bool = True
+                                col = table_object.findCol(where[0][1])
+                                if col == None:
+                                    parsed_dict["error"].append("WhereColumnNotExist")
+                                    return parsed_dict
+                                if col.getDataType() == "char":
+                                    if isinstance(where[2], str) == False:
+                                        parsed_dict["error"].append("WhereIncomparableError")
+                                        return parsed_dict
+                                if col.getDataType() == "int":
+                                    if isinstance(where[2], int) == False:
+                                        parsed_dict["error"].append("WhereIncomparableError")
+                                        return parsed_dict
+                                if col.getDataType() == "date":
+                                    if validate(where[2]) == False:
+                                        parsed_dict["error"].append("WhereIncomparableError")
+                                        return parsed_dict
+                            else:
+                                table_bool = True
+                                col = table_object.findCol(where[0][0])
+                                if col == None:
+                                    parsed_dict["error"].append("WhereColumnNotExist")
+                                    return parsed_dict
+                                if col.getDataType() == "char":
+                                    if isinstance(where[2], str) == False:
+                                        parsed_dict["error"].append("WhereIncomparableError")
+                                        return parsed_dict
+                                if col.getDataType() == "int":
+                                    if isinstance(where[2], int) == False:
+                                        parsed_dict["error"].append("WhereIncomparableError")
+                                        return parsed_dict
+                                if col.getDataType() == "date":
+                                    if validate(where[2]) == False:
+                                        parsed_dict["error"].append("WhereIncomparableError")
+                                        return parsed_dict
+                                
+            # WhereTableNotSpecified                    
+                if table_bool == False:
+                    parsed_dict["error"].append("WhereTableNotSpecified") 
+                    return parsed_dict
+                 
+            # columns that have no reference table (just columns)               
+            elif where != "and" and where != "or" and isinstance(where[0], list) == False:
+                wanted_col = where[0]
+                col_boolean = False
+                count = 0
+                for tables in parsed_dict["from_clause"]:
+                    table = record.findTable(tables[0])
+                    if table != None:
+                        col = table.findCol(wanted_col)
+                        if col != None:
+                            col_boolean = True
+                            count += 1
+                            if count > 1:
+                                parsed_dict["error"].append("WhereAmbiguousReference")
                                 return parsed_dict
                             if col.getDataType() == "char":
                                 if isinstance(where[2], str) == False:
@@ -309,50 +372,23 @@ def HandlingError(parsed_dict, record):
                                     parsed_dict["error"].append("WhereIncomparableError")
                                     return parsed_dict
                                 
-            elif where != "and" and where != "or":
-                wanted_col = where[0]
-                reference_boolean = False
-                count = 0
-                for tables in parsed_dict["from_clause"]:
-                    table = record.findTable(tables[0])
-                    if table != None:
-                        col = table.findCol(wanted_col)
-                        if col != None:
-                            reference_boolean = True
-                            count += 1
-                        
-                        
                 
-                        
-                        
-                
-                        
-                        
-            
-            
-            
-            
-                
-                
-        #WhereIncomparableError
+                if col_boolean == False:
+                    parsed_dict["error"].append("WhereColumnNotExist")
+                    return parsed_dict
+        return parsed_dict
+    
+    if parsed_dict["query"] == "select":
+        tableNameList = [table.getTableName() for table in record.getTableList()]
+        tableList = record.getTableList()
+        #SelectTableExistenceError(#tableName)
+        for tables in parsed_dict["from_clause"]:
+            if tables[0] not in tableNameList:
+                parsed_dict["error"].append(f"SelectTableExistenceError({tables})")
         
-        
-        
+        # SelectColumnResolveError(#colName)
 
-        
-            
-        
-                
-        
-            
-            
 
-       
-        
-        
-        
-        
-            
         
                 
 def DuplicateColumnDefError(parsed_dict):
@@ -402,6 +438,19 @@ def error(error_type):
     elif error_type[:len("InsertColumnNonNullableError")] == "InsertColumnNonNullableError":
         name = error_type[len("InsertColumnNonNullableError")+1:-1]
         print("DB_2022-81863>", f"Insertion has failed: '{name}' is not nullable")
+    elif error_type == "WhereIncomparableError":
+        print("DB_2022-81863>", "Where clause try to compare incomparable values")
+    elif error_type == "WhereTableNotSpecified":
+        print("DB_2022-81863>", "Where clause try to reference tables which are not specified")
+    elif error_type == "WhereColumnNotExist":
+        print("DB_2022-81863>", "Where clause try to reference non existing column")
+    elif error_type == "WhereAmbiguousReference":
+        print("DB_2022-81863>","Where clause contains ambiguous reference")
+    elif error_type[:len("SelectTableExistenceError")] == "SelectTableExistenceError":
+        name = error_type[len("SelectTableExistenceError")+1:-1]
+        print("DB_2022-81863>", f"Selection has failed: '{name}' does not exist")
+
+ 
 
 
 def database(dict, record):
@@ -436,26 +485,119 @@ def database(dict, record):
             for i in range(len(dict["column_list"])):
                 value_dict[dict["column_list"][i]] = dict["value_list"][i]
             for col in column:
-                if col.ColgetName() not in value_dict.keys():
+                if col.getColName() not in value_dict.keys():
                     value_dict[col.getColName()] = None
         else:
             for i in range(len(dict["value_list"])):
                 value_dict[column[i].getColName()] = dict["value_list"][i]
+        print(value_dict)
         pk = table.getPKname()
+        bytePk = pickle.dumps(value_dict[pk])
         byteValueDict = pickle.dumps(value_dict) #change dict object to bytes
-        myDB.put(bytes(pk, "utf-8"), byteValueDict) #put with pk as a key and dict as a value
-        myDB.close()
+        myDB.put(bytePk, byteValueDict) #put with pk as a key and dict as a value
         print("DB_2022-81863> The row is inserted")
         
+        myDB.close()
+    
+    if dict["query"] == "delete":
+        myDB = db.DB()
+        for tables in dict["from_clause"]:
+            table = tables[0]
+            table_dir = "db/" + table + ".db"
+            myDB.open(table_dir, dbtype=db.DB_HASH)
+            rows = cursor(myDB)
             
-        
-
-        
-            
-
-# def loadData():
-#     allData = [f for f in os.listdir("db") if os.path.isfile(os.path.join("db", f))]
-#     return allData
+        pass
+    
+    if dict["query"] == "select":
+        if dict["column_list"][0] == "*":
+            rows = []
+            for tables in dict["from_clause"]:
+                table = tables[0]
+                table_dir = "db/" + table + ".db"
+                myDB.open(table_dir, dbtype=db.DB_HASH)
+                cursor = myDB.cursor()
+                while x:=cursor.next():
+                    rows.append(tuple(pickle.loads(x[0]), pickle.load(x[1])))
+                sorted_list = sorted(rows, key=lambda tup: tup[0])
+            for ele in sorted_list:
+                for keys in ele[1].keys():
+                    print(ele[1][keys])
+                
+                
+def cursor(db, query, tables):
+    i = 0
+    while i < len(query):
+        if query[i] == "and" or query[i] == "or":
+            query1 = query[i-2]
+            query2 = query[i-1]
+            if isinstance(query1[0], list):
+                for table in tables:
+                    if query1[0][0] in table:
+                        wanted_table = table[0]
+                        break
+                db.open("db/"+wanted_table+".db", dbtype=db.DB_HASH)
+                cursor = db.cursor()
+                query1_key_list = []
+                while x := cursor.next():
+                    if query[i] == "or":
+                        if query1[1] == "=":
+                            if x[1][query1[0][1]] == query1[2]:
+                                cursor.delete()
+                        if query1[1] == ">=":
+                            if x[1][query1[0][1]] >= query1[2]:
+                                cursor.delete()
+                        if query1[1] == "<=":
+                            if x[1][query1[0][1]] <= query1[2]:
+                                cursor.delete()
+                        if query1[1] == "<":
+                            if x[1][query1[0][1]] < query1[2]:
+                                cursor.delete()
+                        if query1[1] == ">":
+                            if x[1][query1[0][1]] > query1[2]:
+                                cursor.delete()
+                        if query1[1] != "!=":
+                            if x[1][query1[0][1]] != query1[2]:
+                                cursor.delete()
+                        if query2[1] == "=":
+                            if x[1][query2[0][1]] == query2[2]:
+                                cursor.delete()
+                        if query2[1] == ">=":
+                            if x[1][query2[0][1]] >= query2[2]:
+                                cursor.delete()
+                        if query2[1] == "<=":
+                            if x[1][query2[0][1]] <= query2[2]:
+                                cursor.delete()
+                        if query2[1] == "<":
+                            if x[1][query2[0][1]] < query2[2]:
+                                cursor.delete()
+                        if query2[1] == ">":
+                            if x[1][query2[0][1]] > query2[2]:
+                                cursor.delete()
+                        if query2[1] != "!=":
+                            if x[1][query2[0][1]] != query2[2]:
+                                cursor.delete()
+                        
+                    else:
+                        if query1[1] == "=":
+                            if x[1][query1[0][1]] == query1[2]:
+                                query1_key_list.append(x[0])
+                        if query1[1] == ">=":
+                            if x[1][query1[0][1]] >= query1[2]:
+                                query1_key_list.append(x[0])
+                        if query1[1] == "<=":
+                            if x[1][query1[0][1]] <= query1[2]:
+                                query1_key_list.append(x[0])
+                        if query1[1] == "<":
+                            if x[1][query1[0][1]] < query1[2]:
+                                query1_key_list.append(x[0])
+                        if query1[1] == ">":
+                            if x[1][query1[0][1]] > query1[2]:
+                                query1_key_list.append(x[0])
+                        if query1[1] != "!=":
+                            if x[1][query1[0][1]] != query1[2]:
+                                query1_key_list.append(x[0])
+                        
 
 def save_object(obj, filename):
     with open(filename, 'wb') as output:
@@ -469,14 +611,8 @@ def load_object(filename):
 def loadPkl():
     pklData = [f for f in os.listdir(os.curdir) if os.path.isfile(f) and f.endswith(".pkl")]
     return pklData
-
-
         
         
-        
-
-
-
 
 
 endloop = True
@@ -505,7 +641,7 @@ while endloop:
                 if len(dict["error"]) != 0:
                     error(dict["error"][0])
                     break
-                if dict["query"] == "create" or dict["query"] == "drop" or dict["query"] == "insert":
+                if dict["query"] == "create" or dict["query"] == "drop" or dict["query"] == "insert" or dict["query"] == "select":
                     database(dict, record) 
                  
         except SyntaxError as e:
