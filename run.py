@@ -257,7 +257,88 @@ def HandlingError(parsed_dict, record):
                 return parsed_dict
     
     if parsed_dict["query"] == "delete":
+        tableNameList = [table.getTableName() for table in record.getTableList()]
         
+        
+        
+        for tables in parsed_dict["from_clause"]:
+            #NoSuchTable
+            if tables[0] not in tableNameList:
+                parsed_dict["error"].append("NoSuchTable")
+                return parsed_dict
+        
+        for where in parsed_dict["where_clause"]:
+            if isinstance(where[0], list):
+                for table in parsed_dict["from_clause"]:
+                    if len(table) > 1:
+                        if table[0] == where[0][0] or table[1] == where[0][0]:
+                            table_object = record.findTable(table[0])
+                            col = table_object.findCol(where[0][1])
+                            if col == None:
+                                parsed_dict["error"].append("WhereColumnNotExist")
+                                return parsed_dict
+                            if col.getDataType() == "char":
+                                if isinstance(where[2], str) == False:
+                                    parsed_dict["error"].append("WhereIncomparableError")
+                                    return parsed_dict
+                            if col.getDataType() == "int":
+                                if isinstance(where[2], int) == False:
+                                    parsed_dict["error"].append("WhereIncomparableError")
+                                    return parsed_dict
+                            if col.getDataType() == "date":
+                                if validate(where[2]) == False:
+                                    parsed_dict["error"].append("WhereIncomparableError")
+                                    return parsed_dict
+                    else:
+                        if table[0] == where[0][0]:
+                            table_object = record.findTable(table[0])
+                            col = table_object.findCol(where[0][1])
+                            if col == None:
+                                parsed_dict["error"].append("WhereColumnNotExist")
+                                return parsed_dict
+                            if col.getDataType() == "char":
+                                if isinstance(where[2], str) == False:
+                                    parsed_dict["error"].append("WhereIncomparableError")
+                                    return parsed_dict
+                            if col.getDataType() == "int":
+                                if isinstance(where[2], int) == False:
+                                    parsed_dict["error"].append("WhereIncomparableError")
+                                    return parsed_dict
+                            if col.getDataType() == "date":
+                                if validate(where[2]) == False:
+                                    parsed_dict["error"].append("WhereIncomparableError")
+                                    return parsed_dict
+                                
+            elif where != "and" and where != "or":
+                wanted_col = where[0]
+                reference_boolean = False
+                count = 0
+                for tables in parsed_dict["from_clause"]:
+                    table = record.findTable(tables[0])
+                    if table != None:
+                        col = table.findCol(wanted_col)
+                        if col != None:
+                            reference_boolean = True
+                            count += 1
+                        
+                        
+                
+                        
+                        
+                
+                        
+                        
+            
+            
+            
+            
+                
+                
+        #WhereIncomparableError
+        
+        
+        
+
         
             
         

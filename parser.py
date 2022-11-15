@@ -196,7 +196,9 @@ class MyTransformer(Transformer):
         return items
     
     def referred_table(self, items):
-        items.remove("as")
+        if "as" in items:
+            items.remove("as")
+        items = [i for i in items if i != None]
         return items
     
     def where_clause(self, items):
@@ -238,6 +240,9 @@ class MyTransformer(Transformer):
         return items[0]
     
     def comp_operand(self, items):
+        items = [i for i in items if i != None]
+        if len(items) == 1:
+            items = items[0]
         return items
     
     def comp_op(self, items):
