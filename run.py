@@ -93,7 +93,8 @@ def HandlingError(parsed_dict, record):
                     parsed_dict["error"].append("ReferenceTypeError")
                     return parsed_dict
                 
-                ref_table = record.findTable(group[1][0])
+                ref_table = record.findTable(group[1])
+
                 
                 #ReferenceTableExistenceError
                 if ref_table == None:
@@ -225,42 +226,47 @@ def HandlingError(parsed_dict, record):
         col = parsed_dict["column_list"]
         val = parsed_dict["value_list"]
         col_list = table.getColumns()
+        col_name_list = table.getColNameList()
         if col != None:
             #InsertTypeMismatchError
-            if len(col_list) != len(col):
+            if len(val) != len(col):
                 parsed_dict["error"].append("InsertTypeMismatchError")
                 return parsed_dict    
-            for i in range(len(col_list)):
+            for i in range(len(col)):
                 #InsertColumnExistenceError
-                if col[i] != col_list[i].getColName():
-                    parsed_dict["error"].append(f"InsertColumnExistenceError{col[i]}")
+                print(col_name_list)
+                if col[i] not in col_name_list:
+
+                    parsed_dict["error"].append(f"InsertColumnExistenceError({col[i]})")
                     return parsed_dict
+                
         if col == None:
             if len(val) != len(col_list):
                 parsed_dict["error"].append("InsertTypeMismatchError")
                 return parsed_dict
             
                 
-        for i in range(len(col_list)):
+        for i in range(len(col)):
             #InsertTypeMismathError
-            if col_list[i].getDataType() == "char":
+            col_obj = table.findCol(col[i])
+            if col_obj.getDataType() == "char":
                 if isinstance(val[i], str) == False:
                     parsed_dict["error"].append("InsertTypeMismatchError")
                     return parsed_dict
-                if len(val[i]) > col_list[i].getLengthLimit():
+                if len(val[i]) > col_obj.getLengthLimit():
                     val[i] = val[i][:col_list[i].getLengthLimit()]
-            if col_list[i].getDataType() == "int":
+            if col_obj.getDataType() == "int":
                 if isinstance(val[i], int) == False:
                     parsed_dict["error"].append("InsertTypeMismatchError")
                     return parsed_dict
-            if col_list[i].getDataType() == "date":
+            if col_obj.getDataType() == "date":
                 if validate(val[i]) == False:
                     parsed_dict["error"].append("InsertTypeMismatchError")
                     return parsed_dict
                 
             #InsertColumnNonNullableError
-            if val[i] == "null" and col_list[i].not_null == True:
-                parsed_dict["error"].append(f"InsertColumnNonNullableError{col_list[i].getColName()}")
+            if val[i] == "null" and col_obj.not_null == True:
+                parsed_dict["error"].append(f"InsertColumnNonNullableError{col_obj.getColName()}")
                 return parsed_dict
         return parsed_dict
     
@@ -542,16 +548,21 @@ def database(dict, record):
         table = record.findTable(dict["table_name"])
         column = table.getColumns()
         if dict["column_list"] != None:
-            print("YES")
             # put values in dict object
             for i in range(len(dict["column_list"])):
                 value_dict[dict["column_list"][i]] = dict["value_list"][i]
             for col in column:
                 if col.getColName() not in value_dict.keys():
+                    if col.not_null:
+                        print("DB_2022-81863>", f"Insertion has failed: '{col.getColName()}' is not nullable")
+                        myDB.close()
+                        return
                     value_dict[col.getColName()] = "null"
             pk = table.getPKname()
             if value_dict[pk] == None:
                 print("DB_2022-81863>", f"Insertion has failed: '{pk}' is not nullable")
+                myDB.close()
+                return
             bytePk = pickle.dumps(value_dict[pk])
             byteValueDict = pickle.dumps(value_dict) #change dict object to bytes
             myDB.put(bytePk, byteValueDict) #put with pk as a key and dict as a value
@@ -569,8 +580,10 @@ def database(dict, record):
     
     if dict["query"] == "delete":
         count = 0
+        non_count = 0
         for tables in dict["from_clause"]:
             table = tables[0]
+            table_obj = record.findTable(table)
             myDB = db.DB()
             table_dir = "db/" + table + ".db"
             myDB.open(table_dir, dbtype=db.DB_HASH)
@@ -580,27 +593,65 @@ def database(dict, record):
                 row = pickle.loads(x[1])
                 for where in dict["where_clause"]:
                     col = where[0]
+                    delete = True
                     if where[1] == "=":
                         if row[col] == where[2]:
-                            cursor.delete()
-                            count += 1
+                            for keys in row.keys():
+                                col_obj = table_obj.findCol(keys)
+                                if col_obj.isFK():
+                                    delete = False
+                                    non_count += 1
+                                    break
+                            if delete:        
+                                cursor.delete()
+                                count += 1
                     if where[1] == "<=":
                         if row[col] <= where[2]:
-                            cursor.delete()
-                            count += 1
+                            for keys in row.keys():
+                                col_obj = table_obj.findCol(keys)
+                                if col_obj.isFK():
+                                    delete = False
+                                    non_count += 1
+                                    break
+                            if delete:        
+                                cursor.delete()
+                                count += 1
                     if where[1] == ">=":
                         if row[col] >= where[2]:
-                            cursor.delete()
-                            count += 1
+                            for keys in row.keys():
+                                col_obj = table_obj.findCol(keys)
+                                if col_obj.isFK():
+                                    delete = False
+                                    non_count += 1
+                                    break
+                            if delete:        
+                                cursor.delete()
+                                count += 1
                     if where[1] == ">":
                         if row[col] > where[2]:
-                            cursor.delete()
-                            count += 1
+                            for keys in row.keys():
+                                col_obj = table_obj.findCol(keys)
+                                if col_obj.isFK():
+                                    delete = False
+                                    non_count += 1
+                                    break
+                            if delete:        
+                                cursor.delete()
+                                count += 1
                     if where[1] == "<":
                         if row[col] < where[2]:
-                            cursor.delete()
-                            count += 1
+                            for keys in row.keys():
+                                col_obj = table_obj.findCol(keys)
+                                if col_obj.isFK():
+                                    delete = False
+                                    non_count += 1
+                                    break
+                            if delete:        
+                                cursor.delete()
+                                count += 1
             myDB.close()
+        if non_count > 0:
+            print("DB_2022-81863>", f"{non_count} row(s) are not deleted due to referential integrity")
         print("DB_2022-81863>", f"{count} row(s) are deleted")
                         
     
@@ -642,18 +693,26 @@ def database(dict, record):
         
     if dict["query"] == "update":
         table = dict["table_name"]
+        table_obj = record.findTable(table)
         myDB = db.DB()
         myDB.open("db/" + table + ".db", dbtype=db.DB_HASH)
         cursor = myDB.cursor()
         count = 0
+        not_done_count = 0
         while x:=cursor.next():
             key = pickle.loads(x[0])
             row = pickle.loads(x[1])
             if row[dict["where_clause"][0][0]] == dict["where_clause"][0][2]:
-                row[dict["set"][0]] = dict["set"][2]
-                myDB.put(pickle.dumps(key), pickle.dumps(row))
-                count += 1
+                col = table_obj.findCol(dict["set"][0])
+                if col.isPK() or col.isFK():
+                    not_done_count += 1
+                else:
+                    row[dict["set"][0]] = dict["set"][2]
+                    myDB.put(pickle.dumps(key), pickle.dumps(row))
+                    count += 1
         myDB.close()
+        if not_done_count > 0:
+            print("DB_2022-81863>", f"{not_done_count} row(s) are not updated due to referential integrity")
         print("DB_2022-81863>", f"{count} row(s) are updated")
         
 
@@ -720,7 +779,7 @@ while endloop:
     for i in query_list:
         try:
             transformed = parser(i)
-            #print(transformed)
+            print(transformed)
             if transformed == "exit":
                 endloop = False
                 break
