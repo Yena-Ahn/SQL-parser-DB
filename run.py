@@ -132,7 +132,11 @@ def HandlingError(parsed_dict, record):
                 for item in group[0]:
                     col = table.findCol(item)
                     col.setFK()
-
+                    
+        if "primary_key" not in parsed_dict.keys():
+            parsed_dict["error"].append("DuplicatePrimaryKeyDefError")
+            return parsed_dict
+        
         # NonExistingColumnDefError(#colName)   
         for key in parsed_dict["primary_key"]:
             if key not in table.getColNameList():

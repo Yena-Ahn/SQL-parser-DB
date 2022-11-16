@@ -116,6 +116,8 @@ class MyTransformer(Transformer):
             col = Column(column_definition[0], column_definition[1][0], column_definition[1][1], not_null)
         if column_definition[1][0] == "int":
             col = Column(column_definition[0], column_definition[1][0], None, not_null)
+        if column_definition[1][0] == "date":
+            col = Column(column_definition[0], column_definition[1][0], None, not_null)
         self.table_dict["column_list"].append(col)
         return column_definition
         #col = Column(column_definition[0], column_definition[1][0], column_definition[1][1], True)
